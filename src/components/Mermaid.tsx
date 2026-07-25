@@ -22,7 +22,7 @@ export function Mermaid({ chart }: { chart: string }) {
           mirrorActors: false,
           messageAlign: 'center',
           boxMargin: 12,
-          bottomMarginAdj: 12,
+          bottomMarginAdj: 26,
         },
         themeVariables: {
           background: '#ffffff',

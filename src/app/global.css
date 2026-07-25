@@ -578,8 +578,11 @@ body { font-family: var(--font-sans); background: var(--color-fd-background); }
   font-weight: 600;
 }
 
-/* The sidebar search + nav-title were removed, leaving an almost-empty header
-   (just the collapse toggle) that pushed "Introduction" ~55px down. Drop it so
-   navigation starts near the top; keep a little breathing room. */
-#nd-sidebar > div:first-child { display: none; }
-#nd-sidebar > div:nth-child(2) { padding-top: 0.75rem; }
+/* The sidebar search + nav-title were removed, leaving a big gap above the
+   collapse toggle. Keep the toggle but tighten the padding so "Introduction"
+   sits close to the top. */
+#nd-sidebar > div:first-child {
+  padding-top: 0.4rem;
+  padding-bottom: 0;
+}
+#nd-sidebar > div:nth-child(2) { padding-top: 0; }
