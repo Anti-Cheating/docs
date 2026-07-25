@@ -7,25 +7,19 @@ The Trueyy SDK is built around one principle: **your master API key never reache
 
 ## Token flow
 
-```
-                                                ┌────────────────────┐
-                                                │  Trueyy Cloud      │
-                                                │  (api.trueyy.com)  │
-                                                └─────────┬──────────┘
-                                                          │
-   ┌────────────┐    POST /our-ats/schedule    ┌──────────┴──────────┐
-   │  Your      │ ─────────────────────────────►  Your ATS backend   │
-   │  frontend  │                              │  + @trueyy-sdk/node │
-   │  + @trueyy │ ◄──── candidate_token  ──────│  (holds tk_live_)   │
-   │  -sdk/web  │       interviewer_token      └─────────┬───────────┘
-   └────┬───────┘       helper_token                     │
-        │                                                │ mint session tokens
-        │                                                │ (returns the JWTs)
-        │  <TrueyyProvider token={…}>                    ▼
-        │  opens a secure connection          Cloud mints JWTs (5 min)
-        │                                                │
-        └───── WSS auth: Bearer <session-JWT> ───────────┘
-```
+<Mermaid
+  chart={`sequenceDiagram
+  autonumber
+  participant FE as Your frontend<br/>@trueyy-sdk/web
+  participant BE as Your ATS backend<br/>@trueyy-sdk/node
+  participant CL as Trueyy Cloud<br/>api.trueyy.com
+  FE->>BE: schedule / start a round
+  BE->>CL: mint session tokens (holds tk_live_)
+  CL-->>BE: JWTs, 5 min
+  BE-->>FE: candidate / interviewer / helper tokens
+  FE->>CL: secure connection · Bearer session-JWT
+`}
+/>
 
 1. Your frontend asks **your** backend to schedule / start a round.
 2. Your backend (holding `tk_live_`) calls the Trueyy API and mints one short-lived JWT per role.

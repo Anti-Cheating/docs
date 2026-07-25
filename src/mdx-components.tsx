@@ -5,6 +5,7 @@ import { Step, Steps } from 'fumadocs-ui/components/steps';
 import { Card, Cards } from 'fumadocs-ui/components/card';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Mermaid } from '@/components/Mermaid';
 
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
   return {
@@ -17,6 +18,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Cards,
     Callout,
     TypeTable,
+    Mermaid,
     ...components,
   };
 }

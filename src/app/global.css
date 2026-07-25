@@ -533,6 +533,38 @@ body { font-family: var(--font-sans); background: var(--color-fd-background); }
 #nd-page th,
 #nd-page td { padding: 0.55rem 0.85rem; }
 #nd-page article { max-width: 48rem; }
+
+/* Mermaid diagrams: centered, responsive, in a soft card. */
+.tdoc-mermaid {
+  display: flex;
+  justify-content: center;
+  margin: 1.5rem 0;
+  padding: 1.5rem 1.25rem 2rem;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 12px;
+  background: var(--color-fd-card);
+  overflow-x: auto;
+}
+.tdoc-mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+/* Halo behind message labels so the vertical lifelines don't cut through text. */
+.tdoc-mermaid .messageText {
+  paint-order: stroke;
+  stroke: var(--color-fd-card);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+/* Brand the autonumber badges (default was too dark) — vivid green + dark text. */
+.tdoc-mermaid circle {
+  fill: var(--green);
+  stroke: none;
+}
+.tdoc-mermaid text.sequenceNumber {
+  fill: #06140c;
+  font-weight: 600;
+}
 #nd-page [data-card] {
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
@@ -545,3 +577,9 @@ body { font-family: var(--font-sans); background: var(--color-fd-background); }
   color: var(--color-fd-accent-foreground);
   font-weight: 600;
 }
+
+/* The sidebar search + nav-title were removed, leaving an almost-empty header
+   (just the collapse toggle) that pushed "Introduction" ~55px down. Drop it so
+   navigation starts near the top; keep a little breathing room. */
+#nd-sidebar > div:first-child { display: none; }
+#nd-sidebar > div:nth-child(2) { padding-top: 0.75rem; }
