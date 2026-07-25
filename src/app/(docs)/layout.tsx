@@ -3,7 +3,7 @@ import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import { source } from '@/lib/source';
 import { Navbar, type NavItem } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
-import { GitHubFab } from '@/components/GitHubFab';
+import { AskChatGptFab } from '@/components/AskChatGptFab';
 
 // Serialise Fumadocs' page tree into a plain, client-safe structure for the
 // mobile drawer.
@@ -46,7 +46,7 @@ export default function DocsRootLayout({ children }: { children: ReactNode }) {
         {children}
       </DocsLayout>
       <Footer />
-      <GitHubFab />
+      <AskChatGptFab />
     </>
   );
 }
