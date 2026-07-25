@@ -1,0 +1,17 @@
+---
+title: Billing
+description: Read-only access to plans, subscription, invoices, and usage.
+---
+
+Billing is **read-only** in the SDK. Plan upgrade / subscribe / cancel are intentionally **not** exposed - those happen in the [Trueyy dashboard](https://app.trueyy.com).
+
+```ts
+await trueyy.billing.plans();         // available plans
+await trueyy.billing.subscription();  // current subscription
+await trueyy.billing.invoices();      // invoice history
+await trueyy.billing.usage();         // usage this period
+```
+
+<Callout title="Why read-only">
+Money-moving actions stay in the dashboard behind their own auth and confirmation flows, so an SDK key can surface billing state to your app without being able to change what you're charged.
+</Callout>

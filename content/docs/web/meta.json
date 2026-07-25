@@ -1,0 +1,13 @@
+{
+  "title": "@trueyy-sdk/web",
+  "description": "React frontend SDK",
+  "pages": [
+    "index",
+    "provider",
+    "monitor",
+    "join",
+    "replay",
+    "hooks",
+    "example"
+  ]
+}

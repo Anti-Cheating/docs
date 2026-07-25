@@ -1,0 +1,76 @@
+---
+title: Interviews
+description: Create interviews and rounds, list, fetch, add rounds, and cancel.
+---
+
+An **interview** is the parent process; it owns one or more ordered **rounds** (different interviewers or days). The `round_id` is the handle you pass to [`tokens.mint`](/node/tokens) and [`reports.get`](/node/reports).
+
+## `interviews.create(input)`
+
+Creates an interview and its first round in one call.
+
+```ts
+const { id, round_id } = await trueyy.interviews.create({
+  role: string,
+  description?: string | null,
+  candidate_email: string,
+  candidate_first_name: string,
+  candidate_last_name: string,
+  first_round: {
+    round_name: string,
+    interviewer_user_id: string,   // must pre-exist (team.invite → team.members)
+    scheduled_start_at: string,    // ISO 8601
+    scheduled_end_at: string,      // ISO 8601
+    timezone: string,
+    meeting_link: string,          // required (Zoom / Meet / Teams)
+  },
+});
+// → { id: string, round_id: string }
+```
+
+<Callout title="Persist both ids">
+Store `id` (the interview) and `round_id` (the first round) in your database. `round_id` is what you use to mint tokens and pull reports.
+</Callout>
+
+## `interviews.list(query?)`
+
+```ts
+const page = await trueyy.interviews.list({
+  limit?: number,
+  offset?: number,
+  search?: string,
+});
+// → { items: Interview[], total: number }
+```
+
+## `interviews.get(id)`
+
+Returns the interview with its `rounds[]`.
+
+```ts
+const interview = await trueyy.interviews.get(id);
+// interview.rounds → RoundSummary[]
+//   each: { id, round_name, round_order, status, interviewer, analysis }
+```
+
+## `interviews.addRound(id, round)`
+
+Add another round (different interviewer or day) to an existing interview. The returned `round_id` is what you pass to [`tokens.mint`](/node/tokens) and [`reports.get`](/node/reports).
+
+```ts
+const { round_id, round_order } = await trueyy.interviews.addRound(id, {
+  round_name: "System Design",
+  interviewer_user_id: anotherInterviewer.id,
+  scheduled_start_at: "2026-06-06T10:00:00Z",
+  scheduled_end_at:   "2026-06-06T11:00:00Z",
+  timezone: "UTC",
+  meeting_link: "https://zoom.us/j/987654321",
+});
+// → { round_id: string, round_order: number }
+```
+
+## `interviews.cancel(id)`
+
+```ts
+await trueyy.interviews.cancel(id);
+```

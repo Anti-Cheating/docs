@@ -1,0 +1,180 @@
+---
+title: Overview
+description: Framework-agnostic browser primitives - the live client and Helper bridge that power Trueyy's web SDKs.
+---
+
+<Callout title="Most integrations don't need this">
+If you use React, install [`@trueyy-sdk/web`](/web) - it bundles this core and adds the components and hooks. Install `@trueyy-sdk/web-core` **directly only** for non-React frontends, vanilla JS, Web Components, or your own framework adapter.
+</Callout>
+
+`@trueyy-sdk/web-core` is the foundation: a stateful WebSocket client, the local Helper bridge, and TypeScript types - with **zero UI dependencies**. It exists so Trueyy's framework adapters (React today; Vue / Svelte in the future) share one browser-side runtime.
+
+[![npm](https://img.shields.io/npm/v/@trueyy-sdk/web-core.svg)](https://www.npmjs.com/package/@trueyy-sdk/web-core)
+
+## When to install directly
+
+- You're building **vanilla JS** or your own framework wrapper (no React).
+- You're building a **custom UI** and only need Trueyy's data plane (transcript, risk pulses, window analysis).
+- You're embedding Trueyy in a **Web Component** or non-React micro-frontend.
+
+## Install
+
+```bash
+npm install @trueyy-sdk/web-core
+```
+
+Runs in any modern browser. Requires `fetch`, `WebSocket`, `crypto.subtle`. No Node or build polyfills.
+
+## 1. `TrueyyClient` - typed live data client
+
+Holds a session JWT, connects to Trueyy Cloud via WebSocket, auto-refreshes the token before expiry, and exposes a typed event subscription API.
+
+```ts
+import { TrueyyClient } from "@trueyy-sdk/web-core";
+
+const client = new TrueyyClient({
+  token: interviewerToken,                  // JWT minted by @trueyy-sdk/node
+  role: "interviewer",                      // "candidate" | "interviewer" | "helper"
+  baseUrl: "https://api.trueyy.com",        // optional override
+  onTokenExpiring: async () => {
+    const res = await fetch("/our-ats/refresh-trueyy-token");
+    return res.text();
+  },
+});
+
+client.connect();
+
+// Typed subscriptions
+const unsubRisk = client.on("risk-pulse", (e) => {
+  // e: { session_id, kind, severity, evidence }
+});
+client.on("window-result", (e) => {
+  // e: { session_id, window_id, risk, score, summary, modality_breakdown }
+});
+client.on("live-transcript", (e) => {
+  // e: { session_id, speaker, text, is_final, started_at, ended_at }
+});
+client.on("candidate-status", (e) => {
+  // e: { session_id, screen_recording, mic_granted, joined, ... }
+});
+
+// Imperative commands (interviewer only)
+client.captureNow();
+client.startAnalysis();
+client.stopAnalysis();
+client.startTranscription();
+client.stopTranscription();
+
+// Cleanup
+unsubRisk();
+client.disconnect();
+```
+
+### Configuration
+
+```ts
+interface TrueyyClientOptions {
+  token: string;                           // session-scoped JWT
+  role: "candidate" | "interviewer" | "helper";
+  baseUrl?: string;                        // default: https://api.trueyy.com
+  onTokenExpiring?: () => Promise<string>; // called ~30s before exp
+}
+```
+
+The client reads the JWT's `exp` claim locally and refreshes ~30 seconds before expiry: it calls `onTokenExpiring`, swaps the new JWT in, and the WebSocket reconnects under the new auth.
+
+## 2. `helperBridge` - talk to the local Helper
+
+The Trueyy Helper is a small native app the candidate installs; it captures the signals a browser can't. Interviewers don't need it. These helpers let your frontend detect it, hand it a token, and track its status.
+
+```ts
+import {
+  detectHelper,
+  helperJoin,
+  helperJoinedMeeting,
+  helperLeave,
+  helperStatus,
+  HELPER_DOWNLOAD_URL_MAC,
+  HELPER_DOWNLOAD_URL_WIN,
+} from "@trueyy-sdk/web-core";
+
+// Is the Helper installed and running?
+const ok = await detectHelper();
+if (!ok) {
+  const url = isMac ? HELPER_DOWNLOAD_URL_MAC : HELPER_DOWNLOAD_URL_WIN;
+  window.location.href = url;
+}
+
+// Hand the Helper a helper-JWT + Cloud URL. helperToken is minted on your
+// backend via trueyy.tokens.mint(round_id, "helper"); sessionId is the round id.
+await helperJoin({
+  helperToken,
+  cortexUrl: "https://api.trueyy.com",
+  sessionId: roundId,
+});
+
+// When the candidate clicks "Open Meeting":
+await helperJoinedMeeting(roundId);
+
+// On unmount / explicit end:
+await helperLeave(roundId);
+
+// Poll live state (permissions, mic activity)
+const status = await helperStatus();
+// → { ok, version, screen_recording, mic_granted, joined }
+```
+
+## Event payloads
+
+Every event is fully typed. `client.on(event, fn)` infers `e` from `SocketEventMap` - no casting:
+
+```ts
+import type {
+  RiskPulseEvent, WindowResultEvent, LiveTranscriptEvent,
+  CandidateStatusEvent, ImageAnalysisResultEvent,
+  SocketEventName, SocketEventMap,
+} from "@trueyy-sdk/web-core";
+
+client.on("risk-pulse", (e) => {
+  e.severity;   // "info" | "warning" | "critical"
+  e.evidence;   // Record<string, unknown>
+});
+```
+
+## Vanilla JS example
+
+Render risk events into a plain `<div>` - no framework:
+
+```html
+<div id="risk-list"></div>
+
+<script type="module">
+  import { TrueyyClient } from "https://esm.sh/@trueyy-sdk/web-core";
+
+  const list = document.getElementById("risk-list");
+  const client = new TrueyyClient({
+    token: window.__INTERVIEWER_TOKEN__,
+    role: "interviewer",
+  });
+  client.connect();
+
+  client.on("risk-pulse", (e) => {
+    const row = document.createElement("div");
+    row.textContent = `${e.severity}: ${e.kind}`;
+    row.style.borderLeft = `3px solid ${e.severity === "critical" ? "red" : "orange"}`;
+    list.prepend(row);
+  });
+</script>
+```
+
+## Building your own framework adapter
+
+Want a Vue, Svelte, Angular, or Solid adapter? The pattern is:
+
+<Steps>
+<Step>Wrap `TrueyyClient` in your framework's context primitive (Vue `provide/inject`, Svelte stores, Solid signals).</Step>
+<Step>Expose hooks / composables / runes that subscribe to specific events.</Step>
+<Step>Re-export the relevant types from `@trueyy-sdk/web-core`.</Step>
+</Steps>
+
+The React adapter in [`packages/web-react`](https://github.com/Anti-Cheating/trueyy-sdk/tree/main/packages/web-react/src) is a ~300-line reference. PRs for more adapters are welcome.

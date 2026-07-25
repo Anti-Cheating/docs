@@ -1,0 +1,15 @@
+{
+  "title": "@trueyy-sdk/node",
+  "description": "Backend SDK",
+  "pages": [
+    "index",
+    "interviews",
+    "team",
+    "tokens",
+    "reports",
+    "billing",
+    "webhooks",
+    "errors",
+    "example"
+  ]
+}

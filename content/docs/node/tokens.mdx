@@ -1,0 +1,41 @@
+---
+title: Tokens
+description: Mint short-lived browser JWTs per round and role.
+---
+
+Session tokens let you embed `<TrueyyJoin>` / `<TrueyyMonitor>` in your own UI without a Trueyy login. Each token is scoped to one round and one role and expires in ~5 minutes.
+
+## `tokens.mint(roundId, role)`
+
+```ts
+const { token, expires_at, role } = await trueyy.tokens.mint(
+  round_id,
+  "candidate"   // "candidate" | "interviewer" | "helper"
+);
+```
+
+`roundId` is the round's session id - from [`interviews.create`](/node/interviews#interviewscreateinput) → `round_id`, [`interviews.addRound`](/node/interviews#interviewsaddroundid-round) → `round_id`, or an interview's `rounds[].id`.
+
+## Which token goes where
+
+| Role | Hand it to |
+|---|---|
+| `candidate` | The candidate's pre-join page (`<TrueyyProvider>` → `<TrueyyJoin>`). |
+| `interviewer` | The interviewer's monitoring page (`<TrueyyProvider>` → `<TrueyyMonitor>`). |
+| `helper` | The candidate's local Helper, via `@trueyy-sdk/web-core`'s `helperJoin`. |
+
+## Refreshing
+
+Mint a fresh token whenever the previous one nears expiry. The browser client calls back to your backend to fetch one via this method, through the `onTokenExpiring` handler on `<TrueyyProvider>`:
+
+```tsx
+<TrueyyProvider
+  token={sessionJwt}
+  onTokenExpiring={async () => {
+    const res = await fetch("/our-ats/refresh-trueyy-token");
+    return res.text();   // your backend calls trueyy.tokens.mint(round_id, role)
+  }}
+>
+```
+
+See [Authentication](/authentication#session-tokens-browser) for the security rationale.

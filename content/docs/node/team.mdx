@@ -1,0 +1,39 @@
+---
+title: Team
+description: Invite interviewers and list your team members and pending invites.
+---
+
+An interviewer must exist in your team before you can reference them on a round via `interviewer_user_id`.
+
+## `team.invite({ email, role })`
+
+Invite a teammate (e.g. an interviewer). They accept via email, then appear in [`members()`](#teammembers) with an id you pass as `interviewer_user_id`.
+
+```ts
+await trueyy.team.invite({
+  email: "bob@you.com",
+  role: "Member",     // "Admin" | "Member"
+});
+// → { id, email, role }
+```
+
+## `team.members()`
+
+```ts
+const { members } = await trueyy.team.members();
+// members → Member[]  ({ id, email, first_name, last_name, role })
+
+const interviewer = members.find((m) => m.email === "bob@you.com")!;
+// interviewer.id → pass as interviewer_user_id on a round
+```
+
+## `team.invites(query?)`
+
+List pending (not-yet-accepted) invites.
+
+```ts
+await trueyy.team.invites({
+  limit?: number,
+  offset?: number,
+});
+```

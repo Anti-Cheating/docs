@@ -1,0 +1,14 @@
+{
+  "title": "Trueyy SDK",
+  "root": true,
+  "pages": [
+    "index",
+    "quickstart",
+    "authentication",
+    "architecture",
+    "---Packages---",
+    "node",
+    "web",
+    "web-core"
+  ]
+}

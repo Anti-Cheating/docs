@@ -1,0 +1,181 @@
+---
+title: Quickstart
+description: A complete backend-to-frontend Trueyy integration, end to end.
+---
+
+This walks the whole flow: **invite an interviewer → create an interview → mint browser tokens → embed the frontend → receive webhooks → pull the report.** Backend code uses `@trueyy-sdk/node`; frontend code uses `@trueyy-sdk/web`.
+
+## Install
+
+<Tabs items={['npm', 'pnpm', 'yarn']}>
+  <Tab value="npm">
+
+```bash
+# backend
+npm install @trueyy-sdk/node
+# frontend
+npm install @trueyy-sdk/web
+```
+
+  </Tab>
+  <Tab value="pnpm">
+
+```bash
+pnpm add @trueyy-sdk/node
+pnpm add @trueyy-sdk/web
+```
+
+  </Tab>
+  <Tab value="yarn">
+
+```bash
+yarn add @trueyy-sdk/node
+yarn add @trueyy-sdk/web
+```
+
+  </Tab>
+</Tabs>
+
+## Backend
+
+<Steps>
+
+<Step>
+
+### Configure the client
+
+```ts
+import { Trueyy } from "@trueyy-sdk/node";
+
+const trueyy = new Trueyy({
+  apiKey: process.env.TRUEYY_API_KEY!,   // tk_live_ (production) or tk_test_ (sandbox)
+});
+```
+
+<Callout title="Getting your API key">
+Generate one in the dashboard at [app.trueyy.com](https://app.trueyy.com) → **Settings → API Tokens**. SDK access is included on **Growth, annual Starter, and Enterprise** plans. No API Tokens option? Your plan doesn't include SDK access yet - see [Authentication](/authentication#plan-requirements).
+</Callout>
+
+</Step>
+
+<Step>
+
+### Invite the interviewer
+
+An interviewer must exist in your team before you can put them on a round.
+
+```ts
+await trueyy.team.invite({ email: "bob@you.com", role: "Member" });
+
+// After they accept, look up their id:
+const { members } = await trueyy.team.members();
+const interviewer = members.find((m) => m.email === "bob@you.com")!;
+```
+
+</Step>
+
+<Step>
+
+### Create an interview + its first round
+
+```ts
+const { id, round_id } = await trueyy.interviews.create({
+  role: "Senior Backend Engineer",
+  candidate_email: "alice@x.com",
+  candidate_first_name: "Alice",
+  candidate_last_name: "Doe",
+  first_round: {
+    round_name: "Technical Screen",
+    interviewer_user_id: interviewer.id,
+    scheduled_start_at: "2026-06-04T10:00:00Z",
+    scheduled_end_at:   "2026-06-04T11:00:00Z",
+    timezone: "UTC",
+    meeting_link: "https://zoom.us/j/123456789",
+  },
+});
+```
+
+Persist `id` and `round_id`. The `round_id` is your handle for tokens and reports.
+
+</Step>
+
+<Step>
+
+### Mint browser tokens
+
+One short-lived JWT per round and role.
+
+```ts
+const candidate    = await trueyy.tokens.mint(round_id, "candidate");
+const interviewerT = await trueyy.tokens.mint(round_id, "interviewer");
+const helper       = await trueyy.tokens.mint(round_id, "helper");
+// each → { token, expires_at, role }
+```
+
+</Step>
+
+<Step>
+
+### Receive webhook events
+
+```ts
+import express from "express";
+
+app.post(
+  "/webhooks/trueyy",
+  express.raw({ type: "application/json" }),   // raw body required for HMAC
+  trueyy.webhooks.verify(process.env.TRUEYY_WEBHOOK_SECRET!),
+  (req, res) => {
+    const { event_type, event_id, data } = req.trueyy!.event;
+    // persist event, idempotency-check on event_id
+    res.sendStatus(200);
+  }
+);
+```
+
+</Step>
+
+<Step>
+
+### Pull the report
+
+```ts
+const report = await trueyy.reports.get(round_id);
+```
+
+</Step>
+
+</Steps>
+
+## Frontend
+
+Hand each token to the right browser tab. The interviewer's monitoring page:
+
+```tsx
+import { TrueyyProvider, TrueyyMonitor } from "@trueyy-sdk/web";
+import "@trueyy-sdk/web/styles.css";
+
+function InterviewerPage({ interviewerToken }) {
+  return (
+    <TrueyyProvider
+      token={interviewerToken}
+      onTokenExpiring={async () => {
+        // Hit YOUR backend, which calls trueyy.tokens.mint(round_id, role)
+        const res = await fetch("/our-ats/refresh-trueyy-token");
+        return res.text();
+      }}
+    >
+      <TrueyyMonitor onRiskAlert={(e) => analytics.track("trueyy_risk", e)} />
+    </TrueyyProvider>
+  );
+}
+```
+
+The candidate's pre-join page uses `<TrueyyJoin>`; a recruiter reviewing a finished interview uses `<TrueyyReplay>`. See the [`@trueyy-sdk/web`](/web) reference for all three.
+
+## That's the whole integration
+
+<Cards>
+  <Card title="Backend reference" href="/docs/node" description="Every @trueyy-sdk/node API: interviews, team, tokens, reports, billing, webhooks, errors." />
+  <Card title="Frontend reference" href="/docs/web" description="TrueyyProvider, TrueyyMonitor, TrueyyJoin, TrueyyReplay, and the hooks." />
+</Cards>

@@ -1,0 +1,47 @@
+---
+title: Introduction
+description: Embed Trueyy's live interview-integrity monitoring directly into your own ATS or hiring product.
+---
+
+The **Trueyy SDK** lets you embed live interview-integrity monitoring - real-time AI-tool detection, transcript analysis, and risk scoring - directly into your own ATS or hiring product. Your interviewers and candidates never leave your app.
+
+## Two packages, one integration
+
+Trueyy ships as a small set of packages. A full integration uses **two** of them: one on your backend, one on your frontend.
+
+<Cards>
+  <Card title="@trueyy-sdk/node" href="/docs/node" description="Backend. Holds your tk_live_ API key, creates interviews and rounds, mints short-lived browser tokens, verifies webhooks, and pulls reports." />
+  <Card title="@trueyy-sdk/web" href="/docs/web" description="React frontend. Drop-in <TrueyyMonitor>, <TrueyyJoin>, and <TrueyyReplay> components plus hooks for a fully custom UI." />
+  <Card title="@trueyy-sdk/web-core" href="/docs/web-core" description="Advanced. Framework-agnostic browser client + Helper bridge. Use directly only for non-React or vanilla-JS integrations." />
+</Cards>
+
+<Callout title="Which do I install?">
+Building a normal React integration? Install **`@trueyy-sdk/node`** on your server and **`@trueyy-sdk/web`** on your frontend. `@trueyy-sdk/web-core` is pulled in automatically as a dependency of `@trueyy-sdk/web` - you only install it directly for non-React frontends.
+</Callout>
+
+## How it fits together
+
+1. Your **backend** (`@trueyy-sdk/node`) creates an interview and its rounds, then mints a short-lived (5-minute) browser token per round and role.
+2. Your **frontend** (`@trueyy-sdk/web`) takes that token, opens a secure WebSocket to Trueyy Cloud, and renders the live monitoring UI.
+3. Trueyy streams risk pulses, transcript segments, and window analysis to the interviewer in real time, and delivers **webhooks** to your backend as the session progresses.
+4. After the round, your backend pulls the final **report**.
+
+Your master `tk_live_` API key never touches the browser - see [Architecture](/architecture) for the full token-flow diagram and security model.
+
+## Get started
+
+<Cards>
+  <Card title="Quickstart" href="/docs/quickstart" description="A complete backend-to-frontend integration in about 60 seconds of reading." />
+  <Card title="Authentication" href="/docs/authentication" description="API keys, plan requirements, and how browser tokens are minted." />
+</Cards>
+
+## Requirements
+
+- **Backend:** Node.js ≥ 18 (native `fetch`, `AbortController`, `crypto`).
+- **Frontend:** React 17+ and an evergreen browser (Chrome, Edge, Firefox, Safari - last 2 versions).
+- A Trueyy plan that includes **SDK access** (Growth, annual Starter, or Enterprise). See [Authentication](/authentication#plan-requirements).
+
+## Support
+
+- **Source, issues, and discussions:** [github.com/Anti-Cheating/trueyy-sdk](https://github.com/Anti-Cheating/trueyy-sdk)
+- **Dashboard:** [app.trueyy.com](https://app.trueyy.com)

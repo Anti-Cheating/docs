@@ -1,0 +1,98 @@
+---
+title: Overview
+description: React components for embedding Trueyy's live interview monitoring - drop-in, themable, fully typed.
+---
+
+`@trueyy-sdk/web` is your **frontend** SDK (React 17+). It gives you three drop-in components plus a typed hook surface for building a custom UI on Trueyy's live data plane.
+
+[![npm](https://img.shields.io/npm/v/@trueyy-sdk/web.svg)](https://www.npmjs.com/package/@trueyy-sdk/web)
+
+## Install
+
+<Tabs items={['npm', 'pnpm', 'yarn']}>
+  <Tab value="npm">
+
+```bash
+npm install @trueyy-sdk/web
+```
+
+  </Tab>
+  <Tab value="pnpm">
+
+```bash
+pnpm add @trueyy-sdk/web
+```
+
+  </Tab>
+  <Tab value="yarn">
+
+```bash
+yarn add @trueyy-sdk/web
+```
+
+  </Tab>
+</Tabs>
+
+Then import the default theme stylesheet **once** (typically in your app entry):
+
+```ts
+import "@trueyy-sdk/web/styles.css";
+```
+
+Prefer full control? Skip the stylesheet - every component accepts `className` and theme tokens are CSS variables.
+
+## The components
+
+| Component | Side | Purpose |
+|---|---|---|
+| [`<TrueyyProvider>`](/web/provider) | Both | Holds the session JWT, opens the WebSocket, refreshes tokens before expiry. **Mount once per page.** |
+| [`<TrueyyMonitor>`](/web/monitor) | Interviewer | Live panel: risk pulses, 30-second window scores, transcript stream, "capture now". |
+| [`<TrueyyJoin>`](/web/join) | Candidate | Consent + 3-step pre-join: install Helper → grant permissions → open meeting. |
+| [`<TrueyyReplay>`](/web/replay) | Interviewer | Post-hoc review: scrubbable transcript, risk timeline, screenshots, final report. |
+
+You almost always wrap content in `<TrueyyProvider>` and put one of the other three inside.
+
+## Quick example
+
+```tsx
+import { TrueyyProvider, TrueyyMonitor } from "@trueyy-sdk/web";
+import "@trueyy-sdk/web/styles.css";
+
+function InterviewerPage({ interviewerToken }) {
+  return (
+    <TrueyyProvider
+      token={interviewerToken}
+      theme={{ primary: "#3B82F6", radius: "8px" }}
+      onTokenExpiring={async () => {
+        const res = await fetch("/our-ats/refresh-trueyy-token");
+        return res.text();
+      }}
+    >
+      <TrueyyMonitor onRiskAlert={(e) => analytics.track("trueyy_risk", e)} />
+    </TrueyyProvider>
+  );
+}
+```
+
+## Building a custom UI
+
+If the built-in components don't fit your design, drop them and use the [hooks](/web/hooks) - they expose the same live data plane (risk stream, window results, transcript) so you can render whatever you want.
+
+## Browser support
+
+Targets evergreen browsers - Chrome, Edge, Firefox, Safari (last 2 versions each). Uses `fetch`, `WebSocket`, `AbortController`, `BroadcastChannel`.
+
+## Other frameworks
+
+The data plane lives in framework-agnostic [`@trueyy-sdk/web-core`](/web-core). For Vue / Svelte / Angular, wrap that directly - see its [adapter guide](/web-core#building-your-own-framework-adapter).
+
+## TypeScript
+
+```ts
+import type {
+  TrueyyProviderProps, TrueyyMonitorProps, TrueyyJoinProps, TrueyyReplayProps,
+  TrueyyTheme, TrueyySessionDetail,
+  SessionRole, RiskPulseEvent, WindowResultEvent,
+  LiveTranscriptEvent, CandidateStatusEvent,
+} from "@trueyy-sdk/web";
+```

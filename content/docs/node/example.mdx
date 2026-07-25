@@ -1,0 +1,184 @@
+---
+title: Example (Express)
+description: A complete Express backend that exercises every @trueyy-sdk/node API.
+---
+
+A reference ATS backend that touches every part of `@trueyy-sdk/node` — interviews, tokens, reports, team, billing, and webhooks. In a real app these routes would sit behind **your** auth; here they're plain routes so you can see the SDK call each one maps to.
+
+<Callout title="Runnable source">
+The full example lives in the SDK repo at [`examples/express-ats`](https://github.com/Anti-Cheating/trueyy-sdk/tree/main/examples/express-ats). Clone it, set `TRUEYY_API_KEY`, and run it.
+</Callout>
+
+## Setup
+
+```ts
+import express from "express";
+import { Trueyy, type SessionRole } from "@trueyy-sdk/node";
+
+const trueyy = new Trueyy({
+  apiKey: process.env.TRUEYY_API_KEY!,   // tk_live_ or tk_test_
+});
+
+const app = express();
+const PORT = Number(process.env.PORT ?? 3000);
+
+// Async route wrapper — forwards the SDK's HTTP status (e.g. 404, 422) through.
+const h =
+  (fn: (req: express.Request, res: express.Response) => Promise<void>) =>
+  (req: express.Request, res: express.Response) =>
+    fn(req, res).catch((err: unknown) => {
+      const status = (err as { status?: number }).status ?? 500;
+      res.status(status).json({ error: (err as Error).message });
+    });
+```
+
+## Schedule an interview
+
+The core flow: invite the interviewer, create the interview + round 1, then mint browser tokens.
+
+```ts
+app.post(
+  "/internal/schedule-interview",
+  express.json(),
+  h(async (req, res) => {
+    // 1. Ensure the interviewer exists, then reference them by id.
+    await trueyy.team.invite({ email: req.body.interviewer.email, role: "Member" });
+    const { members } = await trueyy.team.members();
+    const interviewer = members.find((m) => m.email === req.body.interviewer.email);
+    if (!interviewer) {
+      res.status(409).json({ error: "Interviewer must accept their invite first" });
+      return;
+    }
+
+    // 2. Create the interview + round 1.
+    const interview = await trueyy.interviews.create({
+      role: req.body.role ?? "Interview",
+      candidate_email: req.body.candidate.email,
+      candidate_first_name: req.body.candidate.first_name,
+      candidate_last_name: req.body.candidate.last_name,
+      first_round: {
+        round_name: req.body.round_name ?? "Round 1",
+        interviewer_user_id: interviewer.id,
+        scheduled_start_at: req.body.start,
+        scheduled_end_at: req.body.end,
+        timezone: req.body.timezone ?? "UTC",
+        meeting_link: req.body.zoom_url,
+      },
+    });
+
+    // 3. Mint browser tokens for your candidate + interviewer UIs.
+    const candidate = await trueyy.tokens.mint(interview.round_id, "candidate");
+    const interviewerToken = await trueyy.tokens.mint(interview.round_id, "interviewer");
+
+    res.json({
+      interview_id: interview.id,
+      round_id: interview.round_id,
+      candidate,
+      interviewer: interviewerToken,
+    });
+  }),
+);
+```
+
+## Interviews, tokens, reports
+
+```ts
+// List interviews (paginated; optional ?search=&limit=&offset=).
+app.get("/internal/interviews", h(async (req, res) => {
+  const page = await trueyy.interviews.list({
+    limit: req.query.limit ? Number(req.query.limit) : undefined,
+    offset: req.query.offset ? Number(req.query.offset) : undefined,
+    search: typeof req.query.search === "string" ? req.query.search : undefined,
+  });
+  res.json(page);
+}));
+
+// One interview with all its rounds + per-round analysis.
+app.get("/internal/interviews/:id", h(async (req, res) => {
+  res.json(await trueyy.interviews.get(req.params.id!));
+}));
+
+// Add another round to an existing interview.
+app.post("/internal/interviews/:id/rounds", express.json(), h(async (req, res) => {
+  const round = await trueyy.interviews.addRound(req.params.id!, {
+    round_name: req.body.round_name,
+    interviewer_user_id: req.body.interviewer_user_id,
+    scheduled_start_at: req.body.start,
+    scheduled_end_at: req.body.end,
+    timezone: req.body.timezone ?? "UTC",
+    meeting_link: req.body.zoom_url,
+  });
+  res.json(round);
+}));
+
+// Cancel the interview (and every round that hasn't started).
+app.delete("/internal/interviews/:id", h(async (req, res) => {
+  await trueyy.interviews.cancel(req.params.id!);
+  res.sendStatus(204);
+}));
+
+// Mint (or refresh) a short-lived browser token for a round.
+app.post("/internal/rounds/:roundId/token", express.json(), h(async (req, res) => {
+  const role = (req.body.role ?? "candidate") as SessionRole;
+  res.json(await trueyy.tokens.mint(req.params.roundId!, role));
+}));
+
+// The final per-round report.
+app.get("/internal/reports/:roundId", h(async (req, res) => {
+  res.json(await trueyy.reports.get(req.params.roundId!));
+}));
+```
+
+## Team & billing
+
+```ts
+app.post("/internal/team/invite", express.json(), h(async (req, res) => {
+  res.json(await trueyy.team.invite({ email: req.body.email, role: req.body.role ?? "Member" }));
+}));
+
+app.get("/internal/team/members", h(async (_req, res) => {
+  res.json(await trueyy.team.members());
+}));
+
+// Billing is read-only — plan changes happen in the dashboard, never via the SDK.
+app.get("/internal/billing", h(async (_req, res) => {
+  const [plans, subscription, usage, invoices] = await Promise.all([
+    trueyy.billing.plans(),
+    trueyy.billing.subscription(),
+    trueyy.billing.usage(),
+    trueyy.billing.invoices(),
+  ]);
+  res.json({ plans, subscription, usage, invoices });
+}));
+```
+
+## Webhooks
+
+Mount with `express.raw()` so HMAC verification runs against the raw bytes.
+
+```ts
+app.post(
+  "/webhooks/trueyy",
+  express.raw({ type: "application/json" }),
+  trueyy.webhooks.verify(process.env.TRUEYY_WEBHOOK_SECRET!),
+  (req, res) => {
+    const { event_type, data } = req.trueyy!.event;
+    switch (event_type) {
+      case "session.ready":               console.log("Candidate joined:", data); break;
+      case "session.transcript_segment":  console.log("Transcript fragment:", data); break;
+      case "session.risk_pulse":          console.log("Risk pulse:", data); break;
+      case "session.window_result":       console.log("Window analysis:", data); break;
+      case "session.image_analysis_result": console.log("Image analysis:", data); break;
+      case "session.ended":               console.log("Session ended:", data); break;
+      case "session.report_ready":        console.log("Report ready:", data); break; // → reports.get(round_id)
+      case "session.cancelled":           console.log("Session cancelled:", data); break;
+      default:                            console.log("Unhandled:", event_type, data);
+    }
+    res.sendStatus(200);
+  },
+);
+
+app.listen(PORT, () => console.log(`ATS example on http://localhost:${PORT}`));
+```
+
+See the [Webhooks](/node/webhooks) reference for the full event catalog and delivery guarantees.

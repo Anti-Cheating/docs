@@ -1,0 +1,42 @@
+---
+title: TrueyyReplay
+description: Post-hoc session review - transcript, risk timeline, screenshots, and final report.
+---
+
+`<TrueyyReplay>` reviews a finished interview. Unlike the live components, it does **not** open a WebSocket - it reads from your own aggregated copy of the session.
+
+```tsx
+import { TrueyyReplay } from "@trueyy-sdk/web";
+
+function ReviewPage({ sessionId }) {
+  return (
+    <TrueyyReplay
+      sessionId={sessionId}
+      fetchSessionDetail={async (id) => {
+        // YOUR backend, which calls trueyy.reports.get(round_id) via @trueyy-sdk/node
+        const res = await fetch(`/our-ats/sessions/${id}/replay`);
+        return res.json();
+      }}
+    />
+  );
+}
+```
+
+`fetchSessionDetail` is your call - typically a fetch to your own backend that aggregates report data plus your stored webhook history.
+
+## Expected data shape
+
+```ts
+interface TrueyySessionDetail {
+  session_id: string;
+  title: string;
+  status: string;
+  transcripts: { speaker, text, captured_at }[];
+  risk_pulses: { kind, severity, occurred_at }[];
+  windows: { risk, score, summary, start_time }[];
+}
+```
+
+<Callout title="No live socket">
+Because Replay reads from your aggregated copy, it needs no candidate/interviewer token and never connects to Trueyy Cloud - it's safe to render long after the interview ends.
+</Callout>

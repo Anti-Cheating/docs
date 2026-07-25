@@ -1,0 +1,91 @@
+---
+title: Authentication
+description: API keys, plan requirements, and how short-lived browser tokens are minted.
+---
+
+Trueyy uses two kinds of credentials: a **master API key** that lives only on your backend, and **short-lived session tokens** that your backend mints for the browser.
+
+## Master API key
+
+Your backend authenticates to the Trueyy API with a master key on the `Authorization` header:
+
+```
+Authorization: Bearer tk_live_...
+```
+
+The `@trueyy-sdk/node` client handles this for you - you just pass the key when you construct it:
+
+```ts
+import { Trueyy } from "@trueyy-sdk/node";
+
+const trueyy = new Trueyy({
+  apiKey: process.env.TRUEYY_API_KEY!,   // tk_live_ or tk_test_
+});
+```
+
+- `tk_live_...` - production key.
+- `tk_test_...` - sandbox key.
+
+<Callout type="warn" title="Never expose the master key">
+The `tk_live_` key can create interviews, mint tokens, and read reports across your whole account. Keep it server-side only - never ship it to the browser, a mobile app, or a public repo. The browser gets short-lived session tokens instead (below).
+</Callout>
+
+### Getting a key
+
+Generate one in the dashboard at [app.trueyy.com](https://app.trueyy.com) → **Settings → API Tokens**.
+
+## Plan requirements
+
+SDK and API access is gated by plan. It's included on:
+
+- **Growth** (monthly or yearly)
+- **Starter** - annual only
+- **Enterprise**
+
+If you don't see the **API Tokens** option in Settings, your current plan doesn't include SDK access yet. Upgrade in the dashboard, or [contact us](https://app.trueyy.com) to enable it.
+
+<Callout title="Access is checked continuously">
+SDK access is verified both when a token is minted and on every API request. If a plan is downgraded so it no longer includes SDK access, existing keys stop working immediately.
+</Callout>
+
+## Session tokens (browser)
+
+Your frontend never holds the master key. Instead, your backend mints a **short-lived (5-minute) JWT** scoped to a single round and role, and hands that to the browser:
+
+```ts
+const { token, expires_at, role } = await trueyy.tokens.mint(
+  round_id,
+  "candidate"   // "candidate" | "interviewer" | "helper"
+);
+```
+
+The frontend passes this token to `<TrueyyProvider>`. Because it's short-lived and single-session, the blast radius of a leaked browser token is one session for five minutes.
+
+### Refreshing tokens
+
+Tokens expire after ~5 minutes. The browser client detects this ~30 seconds before expiry and calls your `onTokenExpiring` handler, which should fetch a fresh token from your backend:
+
+```tsx
+<TrueyyProvider
+  token={sessionJwt}
+  onTokenExpiring={async () => {
+    const res = await fetch("/our-ats/refresh-trueyy-token");
+    return res.text();   // your backend calls trueyy.tokens.mint(round_id, role)
+  }}
+>
+```
+
+See [Architecture](/architecture) for the full token-flow diagram.
+
+## Configuration reference
+
+```ts
+new Trueyy({
+  apiKey: string,             // REQUIRED - tk_live_ or tk_test_
+  baseUrl?: string,           // default: "https://api.trueyy.com"
+  timeout?: number,           // default: 10_000 (ms)
+  fetchImpl?: typeof fetch,   // default: globalThis.fetch
+});
+```
+
+Override `baseUrl` only if you're pointing at a custom Trueyy endpoint. Override `fetchImpl` to inject a polyfill or instrumentation (e.g. `undici`, an OpenTelemetry-wrapped fetch).

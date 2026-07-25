@@ -1,0 +1,85 @@
+---
+title: Overview
+description: The Trueyy server SDK for Node.js - create interviews, mint tokens, verify webhooks, pull reports.
+---
+
+`@trueyy-sdk/node` is your **backend** SDK. It holds your `tk_live_` master key, talks to the Trueyy API at `https://api.trueyy.com`, and exposes everything you need server-side.
+
+[![npm](https://img.shields.io/npm/v/@trueyy-sdk/node.svg)](https://www.npmjs.com/package/@trueyy-sdk/node)
+
+## Install
+
+<Tabs items={['npm', 'pnpm', 'yarn']}>
+  <Tab value="npm">
+
+```bash
+npm install @trueyy-sdk/node
+```
+
+  </Tab>
+  <Tab value="pnpm">
+
+```bash
+pnpm add @trueyy-sdk/node
+```
+
+  </Tab>
+  <Tab value="yarn">
+
+```bash
+yarn add @trueyy-sdk/node
+```
+
+  </Tab>
+</Tabs>
+
+Requires **Node ≥ 18** (native `fetch`, `AbortController`, `crypto`). Ships both ESM and CommonJS builds.
+
+## What's in the box
+
+| Area | What it does |
+|---|---|
+| [Interviews](/node/interviews) | Create an interview + its first round, list, fetch, add rounds, cancel. |
+| [Team](/node/team) | Invite interviewers, list members and pending invites. |
+| [Tokens](/node/tokens) | Mint short-lived browser JWTs per round and role. |
+| [Reports](/node/reports) | Pull the per-round analysis report. |
+| [Billing](/node/billing) | Read-only: plans, subscription, invoices, usage. |
+| [Webhooks](/node/webhooks) | Express middleware that verifies signatures and parses events. |
+| [Errors](/node/errors) | Typed error classes for every HTTP failure. |
+
+## Configure the client
+
+```ts
+import { Trueyy } from "@trueyy-sdk/node";
+
+const trueyy = new Trueyy({
+  apiKey: process.env.TRUEYY_API_KEY!,   // REQUIRED - tk_live_ or tk_test_
+  baseUrl: "https://api.trueyy.com",     // optional - custom endpoint
+  timeout: 10_000,                       // optional - request timeout in ms
+  // fetchImpl: undici.fetch,            // optional - inject a custom fetch
+});
+```
+
+See [Authentication](/authentication) for keys and plan requirements.
+
+## The mental model
+
+An **interview** is the parent process; it owns one or more ordered **rounds** (different interviewers or days). The `round_id` - returned by `interviews.create` and `interviews.addRound` - is the handle you pass to `tokens.mint` and `reports.get`. This is the same model the Trueyy dashboard uses.
+
+<Callout title="Next step">
+New here? Follow the [Quickstart](/quickstart) for the full backend-to-frontend flow, then use these pages as the API reference.
+</Callout>
+
+## TypeScript
+
+Full types ship with the package. Handy request/response shapes:
+
+```ts
+import type {
+  CreateInterviewInput, RoundInput, Person,
+  Interview, RoundSummary, Member, Report, RefreshedToken, Page,
+  SessionStatus,   // "SCHEDULED" | "ACTIVE" | "ENDED" | "CANCELLED"
+  SessionRole,     // "candidate" | "interviewer" | "helper"
+  WebhookEvent, WebhookEventType,
+} from "@trueyy-sdk/node";
+```

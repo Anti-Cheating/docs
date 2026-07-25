@@ -1,0 +1,47 @@
+---
+title: TrueyyProvider
+description: Holds the session JWT, opens the WebSocket, and refreshes tokens before expiry.
+---
+
+`<TrueyyProvider>` is the root of every Trueyy page. It holds the session JWT, opens the WebSocket to Trueyy Cloud, and refreshes the token before it expires. **Mount it once per page**, with one of the other components inside.
+
+## Props
+
+```tsx
+<TrueyyProvider
+  token={sessionJwt}                       // REQUIRED - 5-min JWT
+  role="candidate" | "interviewer" | "helper"   // OPTIONAL - inferred from the JWT
+  baseUrl="https://api.trueyy.com"         // OPTIONAL - defaults to prod
+  theme={{ primary, radius }}              // OPTIONAL - CSS-var overrides
+  onTokenExpiring={async () => string}     // OPTIONAL but recommended
+>
+  {children}
+</TrueyyProvider>
+```
+
+## Token refresh
+
+`onTokenExpiring` fires ~30 seconds before the JWT expires. Return a fresh token string; the provider swaps it in and the WebSocket reconnects under the new auth.
+
+```tsx
+onTokenExpiring={async () => {
+  // Hit YOUR backend, which calls trueyy.tokens.mint(round_id, role)
+  const res = await fetch("/our-ats/refresh-trueyy-token");
+  return res.text();
+}}
+```
+
+<Callout title="Always provide onTokenExpiring">
+Without it, the session drops when the 5-minute token expires. It's optional only so demos can run with a single token.
+</Callout>
+
+## Theming
+
+`theme` sets CSS variables on the root element:
+
+| Prop | CSS variable | Default |
+|---|---|---|
+| `primary` | `--trueyy-primary` | `#3B82F6` |
+| `radius` | `--trueyy-radius` | `8px` |
+
+You can also override `--trueyy-bg`, `--trueyy-text`, `--trueyy-muted`, and `--trueyy-border` directly in your CSS.

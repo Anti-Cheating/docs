@@ -1,0 +1,87 @@
+---
+title: TrueyyJoin & consent
+description: The candidate's consent-first, 3-step pre-join flow.
+---
+
+`<TrueyyJoin>` is the candidate's entry point. Mount it inside a `<TrueyyProvider>` that holds a **candidate** token.
+
+```tsx
+import { TrueyyProvider, TrueyyJoin } from "@trueyy-sdk/web";
+
+function CandidateJoinPage({ candidateToken, helperToken, zoomUrl }) {
+  // The Helper needs its own token. Inject it on window so <TrueyyJoin>
+  // can hand it to the local Helper. (A future API will accept it as a prop.)
+  (window as any).__TRUEYY_HELPER_TOKEN__ = helperToken;
+
+  return (
+    <TrueyyProvider token={candidateToken}>
+      <TrueyyJoin
+        meetingUrl={zoomUrl}
+        cortexUrl="https://api.trueyy.com"
+        onReady={() => console.log("Candidate joined")}
+      />
+    </TrueyyProvider>
+  );
+}
+```
+
+## The flow: consent, then 3 steps
+
+<Steps>
+<Step>
+### Consent (GDPR Art. 7)
+Before anything else, the candidate sees the monitoring consent text and must agree. Capture is **hard-gated server-side**: no candidate data is captured for a session until consent is granted - so this is a compliance requirement, not just UI.
+</Step>
+<Step>
+### Install the Helper
+Auto-detects whether the Helper is present; offers the correct per-OS download if it's missing.
+</Step>
+<Step>
+### Connect the Helper
+Hands the Helper its token so it can start on the candidate's machine.
+</Step>
+<Step>
+### Open the meeting
+Opens `meetingUrl` in a new tab and signals that the candidate has joined.
+</Step>
+</Steps>
+
+A **"Withdraw monitoring consent"** control is shown throughout the session (GDPR Art. 7(3)). Withdrawal notifies the interviewer immediately and stops capture; the candidate can re-consent to resume.
+
+## Props
+
+```tsx
+<TrueyyJoin
+  meetingUrl={string}                      // REQUIRED - Zoom / Meet / Teams URL
+  cortexUrl="https://api.trueyy.com"       // OPTIONAL
+  onReady={() => void}                     // OPTIONAL - fires after the meeting opens
+  renderConsent={(c) => ReactNode}         // OPTIONAL - replace the built-in consent UI
+  consentHandledExternally={boolean}       // OPTIONAL - you own the consent flow
+  onConsentChange={(status) => void}       // OPTIONAL - 'needed'|'given'|'declined'|'revoked'
+/>
+```
+
+## Candidate consent
+
+The default consent UI is compliance-safe out of the box - do nothing and your candidates get a valid, versioned, provable consent flow. Two escape hatches:
+
+- **`renderConsent`** - supply your own UI while keeping the logic. You receive the `useConsent()` state (`status`, `text`, `agree`, `decline`, `revoke`, `busy`).
+- **`consentHandledExternally`** - your ATS collects consent itself and calls `client.consent.grant(version)` directly. This only **hides** the built-in UI; Trueyy Cloud still blocks capture until consent is granted, so **you accept the compliance responsibility** for showing informed consent first.
+
+For a fully custom flow, use the hook directly:
+
+```tsx
+import { useConsent } from "@trueyy-sdk/web";
+
+function MyConsent() {
+  const { status, text, agree, decline, revoke, busy } = useConsent();
+  // status: 'loading' | 'needed' | 'given' | 'declined' | 'revoked'
+}
+```
+
+Or the raw client methods (framework-agnostic, via [`@trueyy-sdk/web-core`](/web-core)):
+`client.consent.text()`, `.grant(version)`, `.decline()`, `.revoke()`.
+
+<Callout type="warn" title="Consent is a legal control, not just UI">
+`consentHandledExternally` shifts the responsibility to you. If you hide the built-in flow, you must still show informed, versioned consent before granting - Trueyy Cloud enforces the block, but the burden of proof is yours.
+</Callout>

@@ -1,0 +1,51 @@
+---
+title: Example (React)
+description: A minimal Vite + React app that embeds the live interviewer monitor.
+---
+
+A minimal Vite + React app that embeds `<TrueyyMonitor>`. In a real ATS you'd fetch the token from your backend (which mints it with `@trueyy-sdk/node`); this demo reads it from a URL param so you can try it fast.
+
+<Callout title="Runnable source">
+The full example lives in the SDK repo at [`examples/react-ats`](https://github.com/Anti-Cheating/trueyy-sdk/tree/main/examples/react-ats). Clone it and open the page with `?interviewer_token=...`.
+</Callout>
+
+```tsx
+import React from "react";
+import ReactDOM from "react-dom/client";
+import "@trueyy-sdk/web/styles.css";
+import { TrueyyProvider, TrueyyMonitor } from "@trueyy-sdk/web";
+
+// In a real ATS, fetch this token from your backend (which uses
+// @trueyy-sdk/node to mint it). Here we read it from a URL param for the demo.
+const url = new URL(window.location.href);
+const interviewerToken = url.searchParams.get("interviewer_token") ?? "";
+
+function App() {
+  if (!interviewerToken) {
+    return (
+      <div style={{ padding: 24 }}>
+        <h1>Acme ATS</h1>
+        <p>Open this page with <code>?interviewer_token=...</code> to embed the monitor.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: 12 }}>
+      <header style={{ marginBottom: 12 }}>
+        <h1>Acme ATS - interview view</h1>
+      </header>
+      <TrueyyProvider
+        token={interviewerToken}
+        theme={{ primary: "#10b981" }}
+      >
+        <TrueyyMonitor onRiskAlert={(e) => console.log("[Acme] risk", e)} />
+      </TrueyyProvider>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
+```
+
+In production, replace the URL-param token with a fetch to your backend, and wire `onTokenExpiring` on `<TrueyyProvider>` so the session refreshes automatically. See the [`<TrueyyProvider>`](/web/provider) reference.

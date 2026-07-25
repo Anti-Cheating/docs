@@ -1,0 +1,47 @@
+---
+title: Errors
+description: Typed error classes for every HTTP failure, plus the transport retry policy.
+---
+
+Every HTTP error is typed. Catch the base `TrueyyError` to handle them all, or a specific subclass for finer control.
+
+```ts
+import {
+  TrueyyAuthError,
+  TrueyyNotFoundError,
+  TrueyyValidationError,
+  TrueyyRateLimitError,
+  TrueyyServerError,
+  TrueyyError,
+} from "@trueyy-sdk/node";
+
+try {
+  await trueyy.interviews.create(input);
+} catch (err) {
+  if (err instanceof TrueyyAuthError)       { /* 401 - rotate token */ }
+  if (err instanceof TrueyyNotFoundError)   { /* 404 - missing resource */ }
+  if (err instanceof TrueyyValidationError) { /* 400 - fix input */ }
+  if (err instanceof TrueyyRateLimitError)  { /* 429 - back off */ }
+  if (err instanceof TrueyyServerError)     { /* 5xx - retry later */ }
+}
+```
+
+## Error shape
+
+Every error carries:
+
+```ts
+err.status      // HTTP status code
+err.requestId   // X-Trueyy-Request-Id - quote this in support tickets
+err.body        // parsed response body, if any
+err.message     // human-readable
+```
+
+<Callout title="Always log requestId">
+`err.requestId` is the fastest way for support to trace a failed call. Log it alongside your own context whenever you catch a `TrueyyError`.
+</Callout>
+
+## Transport retry policy
+
+- Idempotent **GET**s are retried **once** on network failure.
+- **POST**s are **never** auto-retried - so a create call that appears to fail won't be silently duplicated.

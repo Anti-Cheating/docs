@@ -1,0 +1,19 @@
+---
+title: Reports
+description: Pull the per-round analysis report after an interview.
+---
+
+After a round completes, pull its analysis report.
+
+## `reports.get(roundId)`
+
+```ts
+const report = await trueyy.reports.get(round_id);
+// → Report (the round's analysis)
+```
+
+`roundId` is the round's session id - from [`interviews.create`](/node/interviews#interviewscreateinput) → `round_id`, [`interviews.addRound`](/node/interviews#interviewsaddroundid-round) → `round_id`, or an interview's `rounds[].id`.
+
+<Callout title="Prefer webhooks for freshness">
+Rather than polling `reports.get`, listen for the [`session.report_ready`](/node/webhooks#event-catalog) webhook - it fires the moment a round's report is generated, so you can fetch or store it exactly once.
+</Callout>

@@ -1,0 +1,44 @@
+---
+title: Hooks
+description: Build a fully custom monitoring UI on Trueyy's live data plane.
+---
+
+If the built-in components don't fit your design, build your own UI on the same data plane using these hooks. All of them return reactive state that updates as new events stream in, and unsubscribe automatically on unmount.
+
+```tsx
+import {
+  useTrueyyClient,
+  useRiskStream,
+  useWindowResults,
+  useTranscriptStream,
+} from "@trueyy-sdk/web";
+
+function MyCustomMonitor() {
+  const client = useTrueyyClient();
+  const risks = useRiskStream(50);          // last 50 risk pulses
+  const windows = useWindowResults(50);     // last 50 windows
+  const transcript = useTranscriptStream(200);
+
+  return (
+    <div>
+      <button onClick={() => client.captureNow()}>Capture</button>
+      {risks.map((r, i) => <MyRiskCard key={i} event={r} />)}
+      {/* ... */}
+    </div>
+  );
+}
+```
+
+## Available hooks
+
+| Hook | Returns |
+|---|---|
+| `useTrueyyClient()` | The underlying `TrueyyClient` - for imperative commands like `captureNow()`. |
+| `useRiskStream(n)` | The last `n` risk pulses (`RiskPulseEvent[]`). |
+| `useWindowResults(n)` | The last `n` window analyses (`WindowResultEvent[]`). |
+| `useTranscriptStream(n)` | The last `n` transcript segments (`LiveTranscriptEvent[]`). |
+| `useConsent()` | Consent state + actions - see [Join & consent](/web/join#candidate-consent). |
+
+<Callout title="Under the hood">
+These hooks wrap the framework-agnostic `TrueyyClient` from [`@trueyy-sdk/web-core`](/web-core). If you're not on React, use that client directly.
+</Callout>

@@ -1,0 +1,43 @@
+---
+title: TrueyyMonitor
+description: The interviewer's live monitoring panel - risk pulses, window analysis, and transcript.
+---
+
+`<TrueyyMonitor>` is the interviewer's live view. Mount it inside a `<TrueyyProvider>` that holds an **interviewer** token.
+
+```tsx
+import { TrueyyProvider, TrueyyMonitor } from "@trueyy-sdk/web";
+import "@trueyy-sdk/web/styles.css";
+
+<TrueyyProvider token={interviewerToken} onTokenExpiring={refresh}>
+  <TrueyyMonitor
+    onRiskAlert={(event) => {}}         // fires on every risk pulse
+    onConsentChange={(event) => {}}     // fires on consent given/declined/revoked
+  />
+</TrueyyProvider>
+```
+
+## What it renders
+
+Three columns:
+
+1. **Risk pulses** - incoming alerts, color-coded by severity.
+2. **Window analysis** - every 30 seconds, the LLM-synthesized risk + score + one-line summary.
+3. **Transcript** - live two-speaker transcript.
+
+Plus a **"Capture now"** button that triggers an on-demand screenshot capture.
+
+## Consent banner
+
+A consent banner appears above the columns when the candidate withdraws (or declines) consent - capture has already stopped server-side at that point. `onConsentChange` also forwards every transition to your app, so you can log it or update your own UI.
+
+## Props
+
+| Prop | Type | Fires |
+|---|---|---|
+| `onRiskAlert` | `(event: RiskPulseEvent) => void` | On every risk pulse. |
+| `onConsentChange` | `(event: CandidateStatusEvent) => void` | On consent given / declined / revoked. |
+
+<Callout title="Want a custom layout?">
+`<TrueyyMonitor>` is intentionally simple. For a bespoke UI, drop the component and use the [hooks](/web/hooks) - `useRiskStream`, `useWindowResults`, `useTranscriptStream` - which feed the same data.
+</Callout>

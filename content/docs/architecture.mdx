@@ -1,0 +1,57 @@
+---
+title: Architecture
+description: How tokens flow between your app, your backend, and Trueyy Cloud - and why it's secure.
+---
+
+The Trueyy SDK is built around one principle: **your master API key never reaches the browser.** Your backend mints short-lived, single-session tokens and hands those to the frontend.
+
+## Token flow
+
+```
+                                                ┌────────────────────┐
+                                                │  Trueyy Cloud      │
+                                                │  (api.trueyy.com)  │
+                                                └─────────┬──────────┘
+                                                          │
+   ┌────────────┐    POST /our-ats/schedule    ┌──────────┴──────────┐
+   │  Your      │ ─────────────────────────────►  Your ATS backend   │
+   │  frontend  │                              │  + @trueyy-sdk/node │
+   │  + @trueyy │ ◄──── candidate_token  ──────│  (holds tk_live_)   │
+   │  -sdk/web  │       interviewer_token      └─────────┬───────────┘
+   └────┬───────┘       helper_token                     │
+        │                                                │ mint session tokens
+        │                                                │ (returns the JWTs)
+        │  <TrueyyProvider token={…}>                    ▼
+        │  opens a secure connection          Cloud mints JWTs (5 min)
+        │                                                │
+        └───── WSS auth: Bearer <session-JWT> ───────────┘
+```
+
+1. Your frontend asks **your** backend to schedule / start a round.
+2. Your backend (holding `tk_live_`) calls the Trueyy API and mints one short-lived JWT per role.
+3. Your backend returns those JWTs to the frontend.
+4. `<TrueyyProvider>` opens an authenticated WebSocket to Trueyy Cloud using the session JWT.
+
+## Why this is safe
+
+<Cards>
+  <Card title="Master key stays server-side" description="tk_live_ never leaves your backend. It's the only credential that can act across your whole account." />
+  <Card title="Small blast radius" description="A leaked browser JWT is scoped to one session and expires in ~5 minutes." />
+  <Card title="Auto-rotation" description="The browser client refreshes the JWT before expiry via your onTokenExpiring handler, then reconnects under the new auth." />
+</Cards>
+
+## The three roles
+
+Every session token is minted for exactly one role:
+
+| Role | Who holds it | What it's for |
+|---|---|---|
+| `candidate` | The candidate's browser | The pre-join flow (`<TrueyyJoin>`) and consent. |
+| `interviewer` | The interviewer's browser | Live monitoring (`<TrueyyMonitor>`) and imperative commands. |
+| `helper` | The candidate's local capture helper | Captures signals the browser can't on the candidate's machine. |
+
+The `helper` token is minted the same way as the others; the frontend hands it off during the candidate join flow. See [Join & consent](/web/join).
+
+## Consent is enforced server-side
+
+Candidate monitoring is hard-gated on consent: no candidate data is captured for a session until consent is granted - this is a compliance guarantee (GDPR Art. 7), not just a UI nicety. The `<TrueyyJoin>` component ships a compliant, versioned consent flow out of the box. See [Join & consent](/web/join).
