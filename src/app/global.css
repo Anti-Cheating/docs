@@ -47,7 +47,42 @@
 
 /* Light only. */
 html { color-scheme: light; }
-body { font-family: var(--font-sans); }
+body { font-family: var(--font-sans); background: var(--color-fd-background); }
+
+/* Branded 404 page. */
+.tdoc-404 {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  padding: 24px;
+  background: var(--color-fd-background);
+  color: var(--color-fd-foreground);
+  font-family: var(--font-sans);
+}
+.tdoc-404-code {
+  font-family: var(--font-mono);
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--green-ink);
+  line-height: 1;
+}
+.tdoc-404 h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.tdoc-404 p {
+  color: var(--text-mut);
+  max-width: 42ch;
+}
+.tdoc-404-cta {
+  margin-top: 10px;
+  text-decoration: none;
+}
 
 /* ── Fixed docs header (minimal, brand-only) ────────────────────────────── */
 .tdoc-header {
