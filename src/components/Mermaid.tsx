@@ -22,7 +22,7 @@ export function Mermaid({ chart }: { chart: string }) {
           mirrorActors: false,
           messageAlign: 'center',
           boxMargin: 12,
-          bottomMarginAdj: 26,
+          bottomMarginAdj: 10,
         },
         themeVariables: {
           background: '#ffffff',
@@ -48,7 +48,13 @@ export function Mermaid({ chart }: { chart: string }) {
       });
       try {
         const { svg } = await mermaid.render(`m-${id}`, chart);
-        if (active) setSvg(svg);
+        // Extend the SVG viewBox downward so the last row (e.g. an autonumber
+        // badge sitting on the final message line) isn't clipped by the SVG edge.
+        const padded = svg.replace(
+          /viewBox="([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)"/,
+          (_m, x, y, w, h) => `viewBox="${x} ${y} ${w} ${Number(h) + 14}"`,
+        );
+        if (active) setSvg(padded);
       } catch {
         /* invalid chart — leave empty */
       }
